@@ -1,0 +1,21 @@
+{
+    "courses": {
+        "Arrays": [],
+        "Sorting": [
+            "Arrays"
+        ],
+        "Binary Search": [
+            ""
+        ],
+        "Graphs": [
+            "Binary Search"
+        ],
+        "Dynamic Programming": [
+            "Graphs"
+        ]
+    },
+    "progress": {
+        "Arrays": true,
+        "Sorting": true
+    }
+}
