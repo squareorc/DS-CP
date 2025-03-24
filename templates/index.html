@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Course Planner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Smart Course Planner</h1>
+
+    <h2>Course Dependencies</h2>
+    <div id="network-graph" style="height: 500px;"></div>
+
+    <h2>Your Courses</h2>
+    <ul id="course-list">
+        {% for course, prereqs in courses.items() %}
+            <li id="{{ course }}" class="{% if progress.get(course) %}completed{% endif %}">
+                <b>{{ course }}</b> 
+                {% if prereqs %} (Prerequisites: {{ prereqs | join(', ') }}) {% endif %}
+                {% if not progress.get(course) %}
+                    <button onclick="markCompleted('{{ course }}')">Complete</button>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h3>Recommended Next Courses:</h3>
+    <ul id="recommended-courses"></ul>
+
+    <h2>Add New Course</h2>
+    <input type="text" id="new-course" placeholder="Course Name">
+    <input type="text" id="prereqs" placeholder="Prerequisites (comma-separated)">
+    <button onclick="addCourse()">Add Course</button>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
