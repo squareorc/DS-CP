@@ -1,77 +1,55 @@
-from flask import Flask, render_template, request, jsonify
-import networkx as nx
-import json
+from flask import Flask, render_template, request
+from collections import deque
 
 app = Flask(__name__)
 
-# Load course data (Graph structure)
-def load_courses():
-    try:
-        with open("course_data.json", "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {
-            "courses": {
-                "Arrays": [],
-                "Sorting": ["Arrays"],
-                "Binary Search": ["Sorting"],
-                "Graphs": ["Binary Search"],
-                "Dynamic Programming": ["Graphs"]
-            },
-            "progress": {}
-        }
+class CoursePlanner:
+    def __init__(self):
+        self.graph = {}
+        self.in_degree = {}
 
-def save_courses(data):
-    with open("course_data.json", "w") as file:
-        json.dump(data, file, indent=4)
+    def add_course(self, course, prerequisites):
+        if course not in self.graph:
+            self.graph[course] = []
+            self.in_degree[course] = 0
+        
+        for pre in prerequisites:
+            if pre not in self.graph:
+                self.graph[pre] = []
+                self.in_degree[pre] = 0
+            
+            self.graph[pre].append(course)
+            self.in_degree[course] += 1
 
-# Initialize graph
-def build_graph(course_data):
-    graph = nx.DiGraph()
-    for course, prereqs in course_data["courses"].items():
-        for prereq in prereqs:
-            graph.add_edge(prereq, course)
-    return graph
+    def find_learning_order(self):
+        queue = deque([course for course in self.graph if self.in_degree[course] == 0])
+        order = []
 
-@app.route("/")
+        while queue:
+            course = queue.popleft()
+            order.append(course)
+
+            for neighbor in self.graph[course]:
+                self.in_degree[neighbor] -= 1
+                if self.in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        return order if len(order) == len(self.graph) else ["Cycle detected, check prerequisites"]
+
+@app.route("/", methods=["GET", "POST"])
 def index():
-    course_data = load_courses()
-    graph = build_graph(course_data)
-    sorted_courses = list(nx.topological_sort(graph))
-    return render_template("index.html", courses=course_data["courses"], progress=course_data["progress"], sorted_courses=sorted_courses)
+    if request.method == "POST":
+        topics = request.form.getlist("topic[]")
+        prerequisites = request.form.getlist("prerequisite[]")
 
-@app.route("/mark_complete", methods=["POST"])
-def mark_complete():
-    data = request.json
-    course = data.get("course")
-    
-    course_data = load_courses()
-    prerequisites = course_data["courses"].get(course, [])
-    
-    # Check if prerequisites are done
-    if not all(course_data["progress"].get(prereq, False) for prereq in prerequisites):
-        return jsonify({"status": "error", "message": "Complete prerequisites first!"})
-    
-    # Mark as completed
-    course_data["progress"][course] = True
-    save_courses(course_data)
-    
-    # Get next recommended courses
-    next_courses = [c for c in course_data["courses"] if c not in course_data["progress"]]
-    
-    return jsonify({"status": "success", "updated_progress": course_data["progress"], "next_courses": next_courses})
+        planner = CoursePlanner()
+        for topic, pre in zip(topics, prerequisites):
+            planner.add_course(topic, pre.split(","))  
 
-@app.route("/add_course", methods=["POST"])
-def add_course():
-    data = request.json
-    course_name = data.get("course")
-    prerequisites = data.get("prerequisites", [])
+        order = planner.find_learning_order()
+        return render_template("result.html", order=order)
 
-    course_data = load_courses()
-    course_data["courses"][course_name] = prerequisites
-    save_courses(course_data)
-
-    return jsonify({"status": "success", "courses": course_data["courses"]})
+    return render_template("index.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
